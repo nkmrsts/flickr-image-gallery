@@ -1,32 +1,76 @@
-function main() {
-  const input = getSearchText();
+const ImageGallery = function() {
+  this.input = null;
+  this.pageNum = 1;
+  this.maxPage = null;
+  this.initialize();
+};
+
+ImageGallery.prototype.initialize = function() {
+  const searchForm = document.getElementById('searchForm');
+  searchForm.onsubmit = event => {
+    event.preventDefault();
+    this.pageNum = 1;
+    this.search(getInput(), this.pageNum);
+  };
+  this.moreButton = document.getElementById('more');
+  this.moreButton.addEventListener('click', () => {
+    this.search(this.input, this.pageNum);
+  });
+};
+
+ImageGallery.prototype.search = function(input, num) {
   if (input.length === 0) {
-    const view = `入力欄が空です。`;
-    displayView(view);
+    displayView('入力欄が空です。');
+    return;
   }
-  getPhotos(input)
-    .then(photos => createView(photos))
+  getPhotos(input, num)
+    .then(obj => {
+      console.log(this, obj);
+      this.maxPage = obj.photos.pages;
+      if (this.maxPage === 0) {
+        return '画像が見つかりませんでした。';
+      }
+      return createView(obj);
+    })
     .then(view => displayView(view))
+    .then(() => {
+      if (num < this.maxPage) {
+        this.input = input;
+        this.pageNum += 1;
+        this.showReadMore();
+      } else {
+        this.hideReadMore();
+      }
+    })
     .catch(error => {
       console.error(`エラーが発生しました (${error})`);
     });
-}
-function getPhotos(text) {
+};
+
+ImageGallery.prototype.showReadMore = function() {
+  this.moreButton.style.display = 'block';
+};
+
+ImageGallery.prototype.hideReadMore = function() {
+  this.moreButton.style.display = 'none';
+};
+
+function getPhotos(text, page) {
   return new Promise((resolve, reject) => {
     const request = new XMLHttpRequest();
-    const api_key = '';
+    const url = 'https://api.flickr.com/services/rest/';
+    const apiKey = '';
     request.open(
       'GET',
-      `https://api.flickr.com/services/rest/?method=flickr.photos.search
-&api_key=${api_key}&text=${text}&per_page=16&format=json&nojsoncallback=1`
+      `${url}?method=flickr.photos.search&api_key=${apiKey}&text=${text}&per_page=16&page=${page}&format=json&nojsoncallback=1`
     );
     request.addEventListener('load', event => {
       if (event.target.status !== 200) {
         console.log(`Error: ${event.target.status}`);
         reject(new Error(`${event.target.status}: ${event.target.statusText}`));
       }
-      const photos = JSON.parse(event.target.response);
-      resolve(photos);
+      const photosObj = JSON.parse(event.target.response);
+      resolve(photosObj);
     });
     request.addEventListener('error', () => {
       console.error('Network Error');
@@ -35,46 +79,32 @@ function getPhotos(text) {
     request.send();
   });
 }
-function getSearchText() {
-  const value = document.getElementById('search').value;
+
+function getInput() {
+  const { value } = document.getElementById('input');
   return encodeURIComponent(value);
 }
+
 function createView(obj) {
   const view = [];
-  obj.photos.photo.forEach((v, i, a) => {
-    const farm_id = v.farm;
-    const server_id = v.server;
-    const id = v.id;
-    const secret = v.secret;
-    const title = v.title;
-    const imageURL = `https://farm${farm_id}.staticflickr.com/${server_id}/${id}_${secret}_m.jpg`;
+  obj.photos.photo.forEach(v => {
+    const [farmId, serverId, id, secret, title] = [
+      v.farm,
+      v.server,
+      v.id,
+      v.secret,
+      v.title
+    ];
+    const imageURL = `https://farm${farmId}.staticflickr.com/${serverId}/${id}_${secret}_m.jpg`;
     const htmlString = `<div><a href="${imageURL}"><img src="${imageURL}" alt="${title}"></a></div>`;
     view.push(htmlString);
   });
   return view.join('');
 }
+
 function displayView(view) {
   const result = document.getElementById('result');
   result.innerHTML = view;
 }
 
-const searchForm = document.getElementById('searchForm');
-searchForm.onsubmit = event => {
-  event.preventDefault();
-  main();
-};
-
-/*
-https://farm{farm-id}.staticflickr.com/{server-id}/{id}_{secret}.jpg
-
-farm: 2;
-id: '43375040644';
-isfamily: 0;
-isfriend: 0;
-ispublic: 1;
-owner: '143290162@N03';
-secret: '14c5f7b673';
-server: '1775';
-title: 'The 67 Best Street Style Looks We’ve Seen All Summer';
-__proto__: Object;
-*/
+const imageGallery = new ImageGallery();
