@@ -1,59 +1,61 @@
-const ImageGallery = function() {
-  this.input = null;
-  this.pageNum = 1;
-  this.maxPage = null;
-  this.initialize();
-};
-
-ImageGallery.prototype.initialize = function() {
-  const searchForm = document.getElementById('searchForm');
-  searchForm.onsubmit = event => {
-    event.preventDefault();
+class ImageGallery {
+  constructor() {
+    this.input = null;
     this.pageNum = 1;
-    this.search(getInput(), this.pageNum);
-  };
-  this.moreButton = document.getElementById('more');
-  this.moreButton.addEventListener('click', () => {
-    this.search(this.input, this.pageNum);
-  });
-};
-
-ImageGallery.prototype.search = function(input, num) {
-  if (input.length === 0) {
-    displayView('入力欄が空です。');
-    return;
+    this.maxPage = null;
+    this.initialize();
   }
-  getPhotos(input, num)
-    .then(obj => {
-      console.log(this, obj);
-      this.maxPage = obj.photos.pages;
-      if (this.maxPage === 0) {
-        return '画像が見つかりませんでした。';
-      }
-      return createView(obj);
-    })
-    .then(view => displayView(view))
-    .then(() => {
-      if (num < this.maxPage) {
-        this.input = input;
-        this.pageNum += 1;
-        this.showReadMore();
-      } else {
-        this.hideReadMore();
-      }
-    })
-    .catch(error => {
-      console.error(`エラーが発生しました (${error})`);
+
+  initialize() {
+    const searchForm = document.getElementById('searchForm');
+    searchForm.onsubmit = event => {
+      event.preventDefault();
+      this.pageNum = 1;
+      this.search(getInput(), this.pageNum);
+    };
+    this.moreButton = document.getElementById('more');
+    this.moreButton.addEventListener('click', () => {
+      this.search(this.input, this.pageNum);
     });
-};
+  }
 
-ImageGallery.prototype.showReadMore = function() {
-  this.moreButton.style.display = 'block';
-};
+  search(input, num) {
+    if (input.length === 0) {
+      displayView('入力欄が空です。');
+      return;
+    }
+    getPhotos(input, num)
+      .then(obj => {
+        console.log(this, obj);
+        this.maxPage = obj.photos.pages;
+        if (this.maxPage === 0) {
+          return '画像が見つかりませんでした。';
+        }
+        return createView(obj);
+      })
+      .then(view => displayView(view))
+      .then(() => {
+        if (num < this.maxPage) {
+          this.input = input;
+          this.pageNum += 1;
+          this.showReadMore();
+        } else {
+          this.hideReadMore();
+        }
+      })
+      .catch(error => {
+        console.error(`エラーが発生しました (${error})`);
+      });
+  }
 
-ImageGallery.prototype.hideReadMore = function() {
-  this.moreButton.style.display = 'none';
-};
+  showReadMore() {
+    this.moreButton.style.display = 'block';
+  }
+
+  hideReadMore() {
+    this.moreButton.style.display = 'none';
+  }
+}
 
 function getPhotos(text, page) {
   return new Promise((resolve, reject) => {
