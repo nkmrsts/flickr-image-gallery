@@ -1,3 +1,7 @@
+import { API_KEY } from './config.js';
+
+const API_ROOT = 'https://api.flickr.com/services/rest/';
+
 class ImageGallery {
   constructor() {
     this.input = null;
@@ -22,24 +26,12 @@ class ImageGallery {
       if (item) {
         event.preventDefault();
         const itemId = item.getAttribute('data-id');
-        this.showInfo(itemId);
+        displayView(createInfoView(itemId));
       }
     });
   }
 
-  showInfo(itemId) {
-    getInfo(itemId)
-      .then(data => createInfoView(data))
-      .then(html => {
-        displayView(html);
-      })
-      .catch(error => {
-        console.error(`エラーが発生しました (${error})`);
-      });
-  }
-
   search(input, num) {
-    console.log(input);
     if (input.length === 0) {
       displayView('入力欄が空です。');
       return;
@@ -85,9 +77,7 @@ function fetchAPI(url) {
 }
 
 function getPhotos(text, page) {
-  const API_ROOT = 'https://api.flickr.com/services/rest/';
-  const API_KEY = '';
-  const url = `${API_ROOT}?method=flickr.photos.search&api_key=${API_KEY}&text=${text}&per_page=16&page=${page}&format=json&nojsoncallback=1`;
+  const url = `${API_ROOT}?method=flickr.photos.search&api_key=${API_KEY}&text=${text}&extras=description%2C+date_taken%2C+owner_name%2C+icon_server%2C+url_o%2Curl_m%2C+tags%2C+views%2C+url_o&per_page=16&page=${page}&format=json&nojsoncallback=1`;
   return fetchAPI(url).then(response => {
     const photosObj = response.json();
     return photosObj;
@@ -95,8 +85,6 @@ function getPhotos(text, page) {
 }
 
 function getInfo(id) {
-  const API_ROOT = 'https://api.flickr.com/services/rest/';
-  const API_KEY = '';
   const url = `${API_ROOT}?method=flickr.photos.getInfo&api_key=${API_KEY}&photo_id=${id}`;
   return fetchAPI(url)
     .then(response => response.text())
@@ -109,42 +97,36 @@ function getInput() {
   return encodeURIComponent(value);
 }
 
+const photosData = new Map();
 function createSearchView(obj) {
   const view = [];
   obj.photos.photo.forEach(v => {
-    const [farmId, serverId, id, secret, title] = [
-      v.farm,
-      v.server,
-      v.id,
-      v.secret,
-      v.title
-    ];
-    const imageURL = `https://farm${farmId}.staticflickr.com/${serverId}/${id}_${secret}_m.jpg`;
-    const htmlString = `<div><a href="${imageURL}" data-id="${id}" class="resultItem"><img src="${imageURL}" alt="${title}"></a></div>`;
+    photosData.set(v.id, v);
+    const htmlString = `<div><a href="${v.url_o}" data-id="${
+      v.id
+    }" class="resultItem"><img src="${v.url_m}" alt="${v.title}"></a></div>`;
     view.push(htmlString);
   });
   return view.join('');
 }
 
-function createInfoView(xml) {
+function createInfoView(id) {
+  const data = photosData.get(id);
   let row = '';
-  const photo = xml.getElementsByTagName('photo')[0];
-  const imageURL = `https://farm${photo.getAttribute(
-    'farm'
-  )}.staticflickr.com/${photo.getAttribute('server')}/${photo.getAttribute(
-    'id'
-  )}_${photo.getAttribute('secret')}.jpg`;
+  Object.keys(data).forEach(value => {
+    row += `<tr><td>${value}</td><td>${data[value]}</td></tr>`;
+  });
+  const htmlString = `<table><tbody>${row}</tbody></table>`;
+  return htmlString;
+
+  /*
   const elm = {
     image: `<img src="${imageURL}">`,
     title: xml.getElementsByTagName('title')[0].textContent,
     description: xml.getElementsByTagName('description')[0].textContent,
     username: xml.getElementsByTagName('owner')[0].getAttribute('username')
   };
-  Object.keys(elm).forEach(key => {
-    row += `<tr><td>${key}</td><td>${elm[key]}</td></tr>`;
-  });
-  const htmlString = `<table><tbody>${row}</tbody></table>`;
-  return htmlString;
+  */
 }
 
 function displayView(view) {
